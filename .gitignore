@@ -156,4 +156,4 @@ ystemctl status nginx.serviceq
 
 local-minikube-virtualbox/app-secret.yaml
 
-zapolnenue_yaml
+zapolnenue_yaml/
