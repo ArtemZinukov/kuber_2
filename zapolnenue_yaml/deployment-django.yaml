@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django-app-deployment
+  namespace: edu-unruffled-swirles
+spec:
+  selector:
+    matchLabels:
+      app: django-app
+  template:
+    metadata:
+      labels:
+        app: django-app
+    spec:
+      containers:
+        - name: django-web
+          image: artemzinukov/django-app_2:fc2a0ee3
+          ports:
+            - containerPort: 80
+          envFrom:
+            - secretRef:
+                name: app-secret

@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: clear-old-sessions
+  namespace: <namespace>
+spec:
+  schedule: "0 * * * *"
+  startingDeadlineSeconds: 200
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 20
+      template:
+        spec:
+          containers:
+            - name: clear-sessions
+              image: artemzinukov/django_app:v3
+              imagePullPolicy: IfNotPresent
+              command: ["python", "manage.py", "clearsessions"]
+              envFrom:
+                - secretRef:
+                    name: app-secret
+          restartPolicy: OnFailure

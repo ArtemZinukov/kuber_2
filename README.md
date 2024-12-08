@@ -75,3 +75,80 @@ $ docker compose build web
 `ALLOWED_HOSTS` -- настройка Django со списком разрешённых адресов. Если запрос прилетит на другой адрес, то сайт ответит ошибкой 400. Можно перечислить несколько адресов через запятую, например `127.0.0.1,192.168.0.1,site.test`. [Документация Django](https://docs.djangoproject.com/en/3.2/ref/settings/#allowed-hosts).
 
 `DATABASE_URL` -- адрес для подключения к базе данных PostgreSQL. Другие СУБД сайт не поддерживает. [Формат записи](https://github.com/jacobian/dj-database-url#url-schema).
+
+## Как развернуть сайт в Yandex Cloud
+### Подключение к PostgresQL через SSL
+
+Получить SSL-сертификат:
+
+```
+mkdir -p ~/.postgresql && \
+wget "https://storage.yandexcloud.net/cloud-certs/CA.pem" \
+     --output-document ~/.postgresql/root.crt && \
+chmod 0655 ~/.postgresql/root.crt
+```
+
+Получить `base64` hash SSL-сертификата:
+
+```
+base64 -w 0 ~/.postgresql/root.crt
+```
+Занести hash значение SSL-сертификата и остальные данные для подключения к базе данных в манифест `pg-secret.yaml`
+
+Выполнить команду:
+```
+kubectl apply -f ./yc-sirius-dev/pg-secret.yaml
+```
+И запустить под:
+```
+kubectl apply -f ./yc-sirius-dev/ubuntu-with-pg-ssl-pod.yaml
+```
+Подключиться к запущенному контейнеру - [инструкция](https://kubernetes.io/docs/tasks/debug/debug-application/get-shell-running-container/)
+
+Подключиться из контейнера к PostgresQL:
+
+```
+psql "host=$(cat ~/.postgresql/host) \
+      port=$(cat ~/.postgresql/port) \
+      sslmode=verify-full \
+      dbname=$(cat ~/.postgresql/name) \
+      user=$(cat ~/.postgresql/username) \
+      target_session_attrs=read-write"
+```
+### Запуск сайта внутри кластера
+
+Получить `base64` hash переменных окружения:
+
+* `DEBUG`
+* `SECRET_KEY`
+* `ALLOWED_HOSTS`
+* `DATABASE_URL`
+
+Занести hash-значения переменных в манифест `django-app-secret.yaml`
+
+Последовательно выполнить команды:
+
+```
+kubectl apply -f ./yc-sirius-prod/django-app-secret.yaml
+```
+
+```
+kubectl apply -f ./yc-sirius-prod/deployment-django.yaml
+```
+
+```
+kubectl apply -f ./yc-sirius-prod/django-service.yaml
+```
+
+```
+kubectl apply -f ./yc-sirius-prod/django-ingress.yaml
+```
+
+```
+kubectl apply -f ./yc-sirius-prod/django-migrate.yaml
+```
+
+```
+kubectl apply -f ./yc-sirius-prod/django-clearsessions.yaml
+```
+Сайт доступен по [ссылке](https://edu-unruffled-swirles.sirius-k8s.dvmn.org/)
